@@ -27,3 +27,9 @@ python:
 
 main:
 	poetry run python main.py
+
+poetry:
+	pipx install poetry
+
+chromium:
+	sudo apt-get update && sudo apt-get install -y chromium-browser libglib2.0-0 libnss3 libgconf-2-4 libatk1.0-0 libgtk-3-0 libx11-6 libasound2 libdbus-glib-1-2

@@ -2,6 +2,7 @@ import os
 import time
 import requests
 import re
+import tempfile
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -14,15 +15,13 @@ from urllib.parse import urlparse, unquote
 
 
 class PinterestBoardDownloader:
-    def __init__(self, output_dir="pinterest_images"):
+    def __init__(self, output_dir: str):
         """Initialize the Pinterest board image downloader"""
         self.output_dir = output_dir
         # Create the output directory if it doesn't exist
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
-
-        # Setup Selenium with Chrome
-        self.setup_driver()
+        self.driver = None
 
     def setup_driver(self):
         """Set up the Chrome webdriver with necessary options"""
@@ -33,9 +32,17 @@ class PinterestBoardDownloader:
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--window-size=1920,1080")
 
-        # Initialize the Chrome driver
+        user_data_dir = tempfile.mkdtemp()
+        chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
+        chrome_options.add_argument("--remote-debugging-port=9222") # Explicitly set a debugging port
+
+
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        
+    def close_driver(self):
+        if self.driver:
+            self.driver.quit()
 
     def extract_board_name(self, url):
         """Extract board name from URL for naming the folder"""
