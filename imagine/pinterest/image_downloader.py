@@ -14,15 +14,17 @@ from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urlparse, unquote
 from pathlib import Path
 
+PINIMG_JPG_PATTERN = re.compile(
+    r"/([a-f0-9]{2})/([a-f0-9]{2})/([a-f0-9]{2})/([a-f0-9]+)\.jpg"
+)
+
 
 class PinterestBoardDownloader:
     def __init__(self, board_url: str, output_dir: str):
         """Initialize the Pinterest board image downloader"""
-        path_parts = self.parse_url(board_url)
+
         self.board_url = board_url
-        self.board_name = "_".join(
-            (path_parts[i] for i in range(len(path_parts)))
-        ).replace("-", "")
+        self.board_name = self.board_name_from_url()
         self.output_dir = output_dir
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
@@ -35,7 +37,21 @@ class PinterestBoardDownloader:
             raise ValueError("Invalid url")
         return path_parts
 
-    def extract_file_name(self, url):
+    @staticmethod
+    def convert_to_1200x(url):
+        """Rewrite Pinterest CDN image URL to 1200x version if path matches"""
+        match = PINIMG_JPG_PATTERN.search(url)
+        if match:
+            return f"https://i.pinimg.com/1200x/{match.group(1)}/{match.group(2)}/{match.group(3)}/{match.group(4)}.jpg"
+        return url  # fallback to original if pattern doesn't match
+
+    def board_name_from_url(self):
+        path_parts = self.parse_url(self.board_url)
+        return "_".join((path_parts[i] for i in range(len(path_parts)))).replace(
+            "-", ""
+        )
+
+    def file_name_from_url(self, url):
         """Extract file name from URL for naming the file"""
         path_parts = self.parse_url(url)
         return path_parts[-1]
@@ -58,12 +74,62 @@ class PinterestBoardDownloader:
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
 
+    def load_board(self):
+        """Navigate to the Pinterest board URL."""
+        if not self.driver:
+            raise ValueError("Driver not set. Execute self.setup_driver()")
+        self.driver.get(self.board_url)
+        time.sleep(3)
+
     def close_driver(self):
         if self.driver:
             self.driver.quit()
 
+    def get_visible_pin_elements(self):
+        """Find all visible Pinterest pin elements on the page using data-grid-item="true"."""
+        WebDriverWait(self.driver, timeout=10).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, 'div[data-grid-item="true"]')
+            )
+        )
+        return self.driver.find_elements(By.CSS_SELECTOR, 'div[data-grid-item="true"]')
+
+    def extract_pin_data(pin_element):
+        """Extract title, alt text, and high-resolution image URL (1200x if originals unavailable)"""
+        try:
+            title_element = pin_element.find_element(By.CSS_SELECTOR, "div.X8m")
+            title = title_element.get_attribute("title") or title_element.text
+        except Exception:
+            title = None
+
+        try:
+            img = pin_element.find_element(By.CSS_SELECTOR, "img")
+            alt_text = img.get_attribute("alt")
+            srcset = img.get_attribute("srcset")
+            image_url = None
+
+            if srcset:
+                candidates = [url.strip().split(" ")[0] for url in srcset.split(",")]
+                originals = [url for url in candidates if "originals" in url]
+                if originals:
+                    image_url = originals[0]
+                else:
+                    # fallback: force 1200x URL
+                    fallback_url = candidates[-1] if candidates else None
+                    if fallback_url:
+                        image_url = convert_to_1200x(fallback_url)
+            else:
+                # No srcset — use src directly
+                src = img.get_attribute("src")
+                image_url = convert_to_1200x(src) if src else None
+        except Exception:
+            alt_text = None
+            image_url = None
+
+        return {"title": title, "alt": alt_text, "image_url": image_url}
+
     def download_image(self, image_url):
-        filename = self.extract_file_name(image_url)
+        filename = self.file_name_from_url(image_url)
         try:
             response = requests.get(image_url, stream=True)
             if response.status_code == 200:
