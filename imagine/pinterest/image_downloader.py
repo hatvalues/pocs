@@ -16,13 +16,27 @@ from pathlib import Path
 
 
 class PinterestBoardDownloader:
-    def __init__(self, output_dir: str):
+    def __init__(self, board_url: str, output_dir: str):
         """Initialize the Pinterest board image downloader"""
+        path_parts = self.parse_url(board_url)
+        self.board_url = board_url
+        self.board_name = "_".join((path_parts[i] for i in range(len(path_parts)))).replace("-", "")
         self.output_dir = output_dir
-        # Create the output directory if it doesn't exist
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
         self.driver = None
+
+    @staticmethod
+    def parse_url(url):
+        path_parts = urlparse(url).path.strip("/").split("/")
+        if len(path_parts) < 2:
+            raise ValueError("Invalid url")
+        return path_parts
+
+    def extract_file_name(self, url):
+        """Extract file name from URL for naming the file"""
+        path_parts = self.parse_url(url)
+        return path_parts[-1]
 
     def setup_driver(self):
         """Set up the Chrome webdriver with necessary options"""
@@ -44,24 +58,6 @@ class PinterestBoardDownloader:
     def close_driver(self):
         if self.driver:
             self.driver.quit()
-
-    def extract_board_name(self, url):
-        """Extract board name from URL for naming the folder"""
-        path_parts = urlparse(url).path.strip("/").split("/")
-        len_parts = len(path_parts)
-        if len_parts >= 2:
-            return "_".join((path_parts[i] for i in range(len_parts))).replace("-", "")
-        return url
-
-    def extract_file_name(self, url):
-        """Extract file name from URL for naming the file"""
-        if url is None:
-            raise ValueError("Url expected. None given")
-        path_parts = urlparse(url).path.strip("/").split("/")
-        len_parts = len(path_parts)
-        if len_parts >= 2:
-            return path_parts[-1]
-        raise ValueError("Failed to extract filename. Was it a valid url?")
 
     def download_image(self, image_url):
         filename = self.extract_file_name(image_url)
@@ -85,6 +81,8 @@ class PinterestBoardDownloader:
     def extract_image_urls(self):
         """Extract image URLs from Pinterest board page"""
         # Wait for the image elements to load
+        if not self.driver:
+            raise ValueError("Driver not set. Execute self.setup_driver()")
         try:
             WebDriverWait(self.driver, 10).until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "img"))
@@ -136,8 +134,7 @@ class PinterestBoardDownloader:
     ):
         """Main method to download all images from a Pinterest board"""
         # Create a specific folder for this board
-        board_name = self.extract_board_name(board_url)
-        board_dir = os.path.join(self.output_dir, board_name)
+        board_dir = os.path.join(self.output_dir, self.board_name)
         if not os.path.exists(board_dir):
             os.makedirs(board_dir)
 
