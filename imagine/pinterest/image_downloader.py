@@ -12,6 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urlparse, unquote
+from pathlib import Path
 
 
 class PinterestBoardDownloader:
@@ -47,27 +48,38 @@ class PinterestBoardDownloader:
     def extract_board_name(self, url):
         """Extract board name from URL for naming the folder"""
         path_parts = urlparse(url).path.strip("/").split("/")
-        if len(path_parts) >= 2:
-            return f"{path_parts[0]}_{path_parts[1]}"
-        return "pinterest_board"
+        len_parts = len(path_parts)
+        if len_parts >= 2:
+            return "_".join((path_parts[i] for i in range(len_parts))).replace("-", "")
+        return url
 
-    def download_image(self, img_url, filename):
-        """Download an image from a URL and save it to the specified filename"""
+    def extract_file_name(self, url):
+        """Extract file name from URL for naming the file"""
+        if url is None:
+            raise ValueError("Url expected. None given")
+        path_parts = urlparse(url).path.strip("/").split("/")
+        len_parts = len(path_parts)
+        if len_parts >= 2:
+            return path_parts[-1]
+        raise ValueError("Failed to extract filename. Was it a valid url?")
+
+    def download_image(self, image_url):
+        filename = self.extract_file_name(image_url)
         try:
-            response = requests.get(img_url, stream=True)
+            response = requests.get(image_url, stream=True)
             if response.status_code == 200:
-                with open(filename, "wb") as f:
+                with open(Path(self.output_dir, filename), "wb") as f:
                     for chunk in response.iter_content(1024):
                         f.write(chunk)
                 print(f"Downloaded: {filename}")
                 return True
             else:
                 print(
-                    f"Failed to download {img_url}: Status code {response.status_code}"
+                    f"Failed to download {image_url}: Status code {response.status_code}"
                 )
                 return False
         except Exception as e:
-            print(f"Error downloading {img_url}: {e}")
+            print(f"Error downloading {image_url}: {e}")
             return False
 
     def extract_image_urls(self):
@@ -150,13 +162,13 @@ class PinterestBoardDownloader:
 
         # Download each image
         downloaded_count = 0
-        for i, img_url in enumerate(image_urls):
+        for i, image_url in enumerate(image_urls):
             # Extract a name for the image from the URL or use a counter
             filename = f"pin_{i + 1}.jpg"
 
             # Try to get a better filename from the URL
             try:
-                parsed_url = urlparse(img_url)
+                parsed_url = urlparse(image_url)
                 path = unquote(parsed_url.path)
                 if "/" in path:
                     path_parts = path.split("/")
@@ -176,7 +188,7 @@ class PinterestBoardDownloader:
             filepath = os.path.join(board_dir, filename)
 
             # Download the image
-            if self.download_image(img_url, filepath):
+            if self.download_image(image_url, filepath):
                 downloaded_count += 1
 
         print(
