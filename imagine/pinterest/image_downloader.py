@@ -20,7 +20,9 @@ class PinterestBoardDownloader:
         """Initialize the Pinterest board image downloader"""
         path_parts = self.parse_url(board_url)
         self.board_url = board_url
-        self.board_name = "_".join((path_parts[i] for i in range(len(path_parts)))).replace("-", "")
+        self.board_name = "_".join(
+            (path_parts[i] for i in range(len(path_parts)))
+        ).replace("-", "")
         self.output_dir = output_dir
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
@@ -49,12 +51,13 @@ class PinterestBoardDownloader:
 
         user_data_dir = tempfile.mkdtemp()
         chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
-        chrome_options.add_argument("--remote-debugging-port=9222") # Explicitly set a debugging port
-
+        chrome_options.add_argument(
+            "--remote-debugging-port=9222"
+        )  # Explicitly set a debugging port
 
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
-        
+
     def close_driver(self):
         if self.driver:
             self.driver.quit()
