@@ -1,6 +1,11 @@
 test:
 	poetry run pytest --cov --cov-config=.coveragerc --cov-report term --cov-report html
 
+test_app:
+	poetry run pytest tests/app_tests --cov app --cov-config=.coveragerc --cov-report term --cov-report html
+
+
+
 update_test:
 	UPDATE_FILE_FIXTURES=TRUE poetry run pytest --cov --cov-config=.coveragerc --cov-report term --cov-report html
 
