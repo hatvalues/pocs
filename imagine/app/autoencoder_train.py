@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
-from autoencoder import DynAutoencoder
+from app.model_builder import DynAutoencoder
 from datetime import datetime
 # This script trains an autoencoder on the Fashion MNIST dataset.
 
@@ -31,14 +31,12 @@ print("Number of pixels:", n_pixels)
 
 
 def channel_based_normaliser(n_channels: int):
-    transform = transforms.Compose(
+    return transforms.Compose(
         [
             transforms.ToTensor(),
             transforms.Normalize((0.5,) * n_channels, (0.5,) * n_channels),
         ]
     )
-    return transform
-
 
 transform = channel_based_normaliser(channels)
 train_dataset.transform = transform
@@ -50,7 +48,9 @@ test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
 # Instantiate the autoencoder model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-my_autoencoder = DynAutoencoder(channels=channels, height=height, width=width).to(device)
+my_autoencoder = DynAutoencoder(channels=channels, height=height, width=width).to(
+    device
+)
 
 # # Define loss function and optimizer
 criterion = nn.MSELoss()
