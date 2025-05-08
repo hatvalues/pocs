@@ -24,7 +24,21 @@ test_dataset = datasets.FashionMNIST(
     root="./data", train=False, transform=None, download=True
 )
 
+first_image = train_dataset[0][0]
+height, width = first_image.size
+channels = 0
+for i in range(3):
+    try:
+        first_image.getchannel(i)
+        channels += 1
+    except ValueError:
+        break
+
 channels, height, width = train_dataset[0][0].shape
+print("Image shape:", channels, height, width)
+n_pixels = channels * height * width
+print("Number of pixels:", n_pixels)
+
 print("Image shape:", channels, height, width)
 n_pixels = channels * height * width
 print("Number of pixels:", n_pixels)
@@ -37,6 +51,7 @@ def channel_based_normaliser(n_channels: int):
             transforms.Normalize((0.5,) * n_channels, (0.5,) * n_channels),
         ]
     )
+
 
 transform = channel_based_normaliser(channels)
 train_dataset.transform = transform

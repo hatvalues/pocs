@@ -40,11 +40,14 @@ def test_CNN_init():
     )
     assert_text_matches_fixture("cnn_init_add_layer", str(model))
 
+
 @pytest.mark.parametrize(
     "batch_size,input_channels,input_dim,n_conv_filters,max_pool_factor",
     [
         (4, 3, 28, [16], 2),
         (4, 3, 32, [16], 2),
+        (4, 3, 90, [16], 3),
+        (4, 3, 92, [16], 3),
     ],
 )
 def test_CNN(batch_size, input_channels, input_dim, n_conv_filters, max_pool_factor):
@@ -55,14 +58,24 @@ def test_CNN(batch_size, input_channels, input_dim, n_conv_filters, max_pool_fac
         conv_strides=[1],
         conv_paddings=[2],
         conv_dilations=[1],
-        activations=["relu", "relu"],
+        activations=["relu"],
         max_pool_kernel_sizes=[max_pool_factor],
         max_pool_strides=[max_pool_factor],
         max_pool_paddings=[0],
         max_pool_dilations=[1],
     )
 
-    assert model.conv_layers_sizing(input_dim) == ([input_dim], [input_dim // max_pool_factor])
-    x = torch.randn(batch_size, input_channels, input_dim // max_pool_factor, input_dim // max_pool_factor)
+    assert model.conv_layers_sizing(input_dim) == (
+        [input_dim],
+        [input_dim // max_pool_factor],
+    )
+    x = torch.randn(batch_size, input_channels, input_dim, input_dim)
     y = model(x)
-    assert y.shape == torch.Size([batch_size, n_conv_filters[-1], input_dim // (2 * max_pool_factor), input_dim // (2 * max_pool_factor)])
+    assert y.shape == torch.Size(
+        [
+            batch_size,
+            n_conv_filters[-1],
+            input_dim // max_pool_factor,
+            input_dim // max_pool_factor,
+        ]
+    )

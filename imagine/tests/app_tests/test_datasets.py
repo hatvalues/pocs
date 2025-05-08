@@ -1,10 +1,10 @@
 from app.datasets import CustomImageDataset
 import os
-import pytest # type: ignore
+import pytest  # type: ignore
 import torch
 import numpy as np
 from PIL import Image
-from torchvision import transforms # type: ignore
+from torchvision import transforms  # type: ignore
 from unittest.mock import patch
 from pytest_unordered import unordered
 
